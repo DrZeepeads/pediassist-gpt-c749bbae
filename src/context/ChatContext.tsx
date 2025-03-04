@@ -1,11 +1,19 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { supabase } from "../integrations/supabase/client";
 
 export interface Message {
   id: string;
   content: string;
   sender: 'user' | 'ai';
   timestamp: Date;
+}
+
+interface SearchResult {
+  chunk_id: string;
+  content: string;
+  similarity?: number;
+  rank?: number;
 }
 
 interface ChatContextType {
@@ -45,9 +53,69 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.setItem('nelson-chat-messages', JSON.stringify(messages));
   }, [messages]);
 
-  const simulateAIResponse = (userMessage: string) => {
+  const generateAIResponse = async (userQuery: string) => {
     setIsTyping(true);
     
+    try {
+      // Call our Supabase Edge Function for AI-powered search
+      const { data, error } = await supabase.functions.invoke('nelson-search', {
+        body: { query: userQuery, limit: 5 }
+      });
+      
+      if (error) {
+        console.error('Search function error:', error);
+        throw new Error('Failed to search Nelson database');
+      }
+      
+      const results: SearchResult[] = data?.results || [];
+      
+      // Generate response based on search results
+      let responseText = '';
+      
+      if (results.length === 0) {
+        responseText = `I couldn't find specific information about "${userQuery}" in the Nelson Textbook of Pediatrics. Please try rephrasing your question or ask about a different pediatric topic.`;
+      } else {
+        // Format the results into a coherent response
+        responseText = `# Information from Nelson Textbook of Pediatrics\n\n`;
+        
+        // Extract key points from results
+        const combinedContent = results.map(r => r.content).join(' ');
+        const sentences = combinedContent.split(/\.\s+/).filter(s => s.trim().length > 0);
+        
+        // Group information into sections
+        responseText += `## Key Points\n`;
+        responseText += sentences.slice(0, Math.min(5, sentences.length))
+          .map(s => `* ${s}${s.endsWith('.') ? '' : '.'}`)
+          .join('\n');
+        
+        responseText += `\n\n## Detailed Information\n`;
+        results.forEach(result => {
+          responseText += `${result.content}\n\n`;
+        });
+        
+        responseText += `\n**Medical Disclaimer**: This information is for educational purposes only and should not replace professional medical advice.`;
+      }
+      
+      setTimeout(() => {
+        const aiMessage: Message = {
+          id: `ai-${Date.now()}`,
+          content: responseText,
+          sender: 'ai',
+          timestamp: new Date()
+        };
+        setMessages(prev => [...prev, aiMessage]);
+        setIsTyping(false);
+      }, 1000);
+      
+    } catch (error) {
+      console.error('Error generating AI response:', error);
+      
+      // Fallback to demo responses if search fails
+      simulateAIResponse(userQuery);
+    }
+  };
+  
+  const simulateAIResponse = (userMessage: string) => {
     // Define some demo responses based on user input
     const demoResponses: Record<string, string> = {
       default: `Based on the Nelson Textbook of Pediatrics, I can provide the following information:
@@ -125,7 +193,9 @@ The Nelson Textbook of Pediatrics classifies pediatric rashes into several categ
     };
     
     setMessages(prev => [...prev, userMessage]);
-    simulateAIResponse(content);
+    
+    // Use the enhanced AI response generator
+    generateAIResponse(content);
   };
 
   const clearChat = () => {
