@@ -1,6 +1,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from "../integrations/supabase/client";
+import { toast } from 'sonner';
 
 export interface Message {
   id: string;
@@ -57,55 +58,79 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsTyping(true);
     
     try {
-      // Call our Supabase Edge Function for AI-powered search
-      const { data, error } = await supabase.functions.invoke('nelson-search', {
+      // First, search for relevant content using nelson-search function
+      const { data: searchData, error: searchError } = await supabase.functions.invoke('nelson-search', {
         body: { query: userQuery, limit: 5 }
       });
       
-      if (error) {
-        console.error('Search function error:', error);
+      if (searchError) {
+        console.error('Search function error:', searchError);
         throw new Error('Failed to search Nelson database');
       }
       
-      const results: SearchResult[] = data?.results || [];
+      const searchResults: SearchResult[] = searchData?.results || [];
       
-      // Generate response based on search results
-      let responseText = '';
-      
-      if (results.length === 0) {
-        responseText = `I couldn't find specific information about "${userQuery}" in the Nelson Textbook of Pediatrics. Please try rephrasing your question or ask about a different pediatric topic.`;
-      } else {
-        // Format the results into a coherent response
-        responseText = `# Information from Nelson Textbook of Pediatrics\n\n`;
-        
-        // Extract key points from results
-        const combinedContent = results.map(r => r.content).join(' ');
-        const sentences = combinedContent.split(/\.\s+/).filter(s => s.trim().length > 0);
-        
-        // Group information into sections
-        responseText += `## Key Points\n`;
-        responseText += sentences.slice(0, Math.min(5, sentences.length))
-          .map(s => `* ${s}${s.endsWith('.') ? '' : '.'}`)
-          .join('\n');
-        
-        responseText += `\n\n## Detailed Information\n`;
-        results.forEach(result => {
-          responseText += `${result.content}\n\n`;
-        });
-        
-        responseText += `\n**Medical Disclaimer**: This information is for educational purposes only and should not replace professional medical advice.`;
+      if (searchResults.length === 0) {
+        // Handle no results case
+        setTimeout(() => {
+          const aiMessage: Message = {
+            id: `ai-${Date.now()}`,
+            content: `I couldn't find specific information about "${userQuery}" in the Nelson Textbook of Pediatrics. Please try rephrasing your question or ask about a different pediatric topic.`,
+            sender: 'ai',
+            timestamp: new Date()
+          };
+          setMessages(prev => [...prev, aiMessage]);
+          setIsTyping(false);
+        }, 1000);
+        return;
       }
       
-      setTimeout(() => {
-        const aiMessage: Message = {
-          id: `ai-${Date.now()}`,
-          content: responseText,
-          sender: 'ai',
-          timestamp: new Date()
-        };
-        setMessages(prev => [...prev, aiMessage]);
-        setIsTyping(false);
-      }, 1000);
+      // Now, enhance the response with Mistral
+      try {
+        const { data: mistralData, error: mistralError } = await supabase.functions.invoke('nelson-mistral', {
+          body: { 
+            query: userQuery,
+            searchResults: searchResults 
+          }
+        });
+        
+        if (mistralError) {
+          console.error('Mistral function error:', mistralError);
+          // Fall back to basic response generation if Mistral fails
+          throw new Error('Failed to enhance response with Mistral');
+        }
+        
+        const aiResponse = mistralData?.aiResponse;
+        
+        setTimeout(() => {
+          const aiMessage: Message = {
+            id: `ai-${Date.now()}`,
+            content: aiResponse,
+            sender: 'ai',
+            timestamp: new Date()
+          };
+          setMessages(prev => [...prev, aiMessage]);
+          setIsTyping(false);
+        }, 1000);
+        
+      } catch (mistralError) {
+        console.error('Error with Mistral enhancement:', mistralError);
+        toast.error('AI enhancement failed, using basic response');
+        
+        // Fall back to basic response format
+        const responseText = formatBasicResponse(searchResults);
+        
+        setTimeout(() => {
+          const aiMessage: Message = {
+            id: `ai-${Date.now()}`,
+            content: responseText,
+            sender: 'ai',
+            timestamp: new Date()
+          };
+          setMessages(prev => [...prev, aiMessage]);
+          setIsTyping(false);
+        }, 1000);
+      }
       
     } catch (error) {
       console.error('Error generating AI response:', error);
@@ -114,6 +139,29 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       simulateAIResponse(userQuery);
     }
   };
+  
+  const formatBasicResponse = (results: SearchResult[]): string => {
+    let responseText = `# Information from Nelson Textbook of Pediatrics\n\n`;
+    
+    // Extract key points from results
+    const combinedContent = results.map(r => r.content).join(' ');
+    const sentences = combinedContent.split(/\.\s+/).filter(s => s.trim().length > 0);
+    
+    // Group information into sections
+    responseText += `## Key Points\n`;
+    responseText += sentences.slice(0, Math.min(5, sentences.length))
+      .map(s => `* ${s}${s.endsWith('.') ? '' : '.'}`)
+      .join('\n');
+    
+    responseText += `\n\n## Detailed Information\n`;
+    results.forEach(result => {
+      responseText += `${result.content}\n\n`;
+    });
+    
+    responseText += `\n**Medical Disclaimer**: This information is for educational purposes only and should not replace professional medical advice.`;
+    
+    return responseText;
+  }
   
   const simulateAIResponse = (userMessage: string) => {
     // Define some demo responses based on user input
