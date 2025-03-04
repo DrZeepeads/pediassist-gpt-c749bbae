@@ -1,13 +1,15 @@
 
 import React from 'react';
 import { useLocation } from 'react-router-dom';
-import { Menu } from 'lucide-react';
+import { Menu, Download } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface HeaderProps {
   toggleSidebar: () => void;
+  installPrompt?: any;
 }
 
-const Header: React.FC<HeaderProps> = ({ toggleSidebar }) => {
+const Header: React.FC<HeaderProps> = ({ toggleSidebar, installPrompt }) => {
   const location = useLocation();
   
   // Determine the current section based on the URL path
@@ -20,6 +22,21 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar }) => {
     
     // Default fallback or transform the path
     return path.split('/').pop()?.replace('-', ' ') || 'Nelson-GPT';
+  };
+  
+  // Handle install button click
+  const handleInstallClick = () => {
+    if (installPrompt) {
+      installPrompt.prompt();
+      // Wait for the user to respond to the prompt
+      installPrompt.userChoice.then((choiceResult: { outcome: string }) => {
+        if (choiceResult.outcome === 'accepted') {
+          console.log('User accepted the install prompt');
+        } else {
+          console.log('User dismissed the install prompt');
+        }
+      });
+    }
   };
   
   return (
@@ -36,6 +53,17 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar }) => {
       </div>
       
       <div className="flex items-center space-x-2">
+        {installPrompt && (
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleInstallClick}
+            className="flex items-center gap-1 mr-2"
+          >
+            <Download className="h-4 w-4" />
+            <span className="hidden sm:inline">Install App</span>
+          </Button>
+        )}
         <div className="text-sm font-medium text-nelson-600 px-2 py-1 rounded-full bg-nelson-50 border border-nelson-100">
           Nelson Textbook of Pediatrics
         </div>
