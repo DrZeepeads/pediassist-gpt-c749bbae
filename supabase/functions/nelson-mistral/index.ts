@@ -7,7 +7,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const mistralApiKey = Deno.env.get('MISTRAL_API_KEY');
+const geminiApiKey = Deno.env.get('GEMINI_API_KEY');
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -26,7 +26,7 @@ serve(async (req) => {
       throw new Error('Search results are required');
     }
 
-    console.log(`Processing mistral query: "${query}" with ${searchResults.length} search results`);
+    console.log(`Processing gemini query: "${query}" with ${searchResults.length} search results`);
 
     // Initialize the Supabase client
     const supabaseClient = createClient(
@@ -37,8 +37,8 @@ serve(async (req) => {
     // Format the context from search results
     const context = searchResults.map(result => result.content).join("\n\n");
 
-    // Prepare the prompt for Mistral
-    const systemPrompt = `You are a medical assistant specialized in pediatrics, providing information based on the Nelson Textbook of Pediatrics.
+    // Prepare the prompt for Gemini
+    const prompt = `You are a medical assistant specialized in pediatrics, providing information based on the Nelson Textbook of Pediatrics.
 Your goal is to give accurate, evidence-based answers about pediatric conditions, treatments, and guidelines.
 Always include a medical disclaimer stating that this information is for educational purposes only.
 Format your responses in Markdown for better readability.
@@ -51,48 +51,62 @@ Your answer should:
 5. Include prognosis when available
 6. Add any special considerations for pediatric patients
 
-Always provide detailed, specific information from the reference text, not generic responses.`;
+Always provide detailed, specific information from the reference text, not generic responses.
 
-    const userPrompt = `Based on the following information from the Nelson Textbook of Pediatrics, please provide a comprehensive answer to this query: "${query}"
+Based on the following information from the Nelson Textbook of Pediatrics, please provide a comprehensive answer to this query: "${query}"
     
 REFERENCE INFORMATION:
 ${context}`;
 
-    // Check if Mistral API key is available
-    if (!mistralApiKey) {
-      console.error('MISTRAL_API_KEY is not set in environment variables');
-      throw new Error('Mistral API key is not configured');
+    // Check if Gemini API key is available
+    if (!geminiApiKey) {
+      console.error('GEMINI_API_KEY is not set in environment variables');
+      throw new Error('Gemini API key is not configured');
     }
 
-    // Call Mistral API
-    console.log("Calling Mistral API...");
+    // Call Gemini API
+    console.log("Calling Gemini API...");
     try {
-      const mistralResponse = await fetch("https://api.mistral.ai/v1/chat/completions", {
+      const geminiResponse = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-1.0-pro:generateContent", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${mistralApiKey}`
+          "x-goog-api-key": geminiApiKey
         },
         body: JSON.stringify({
-          model: "mistral-large-latest",
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: userPrompt }
+          contents: [
+            {
+              parts: [
+                { text: prompt }
+              ]
+            }
           ],
-          temperature: 0.3,
-          max_tokens: 1024
+          generationConfig: {
+            temperature: 0.3,
+            maxOutputTokens: 1024,
+            topP: 0.8,
+            topK: 40
+          }
         })
       });
 
-      if (!mistralResponse.ok) {
-        const errorText = await mistralResponse.text();
-        console.error("Mistral API error:", mistralResponse.status, errorText);
-        throw new Error(`Mistral API error: ${mistralResponse.status} ${errorText}`);
+      if (!geminiResponse.ok) {
+        const errorText = await geminiResponse.text();
+        console.error("Gemini API error:", geminiResponse.status, errorText);
+        throw new Error(`Gemini API error: ${geminiResponse.status} ${errorText}`);
       }
 
-      const mistralData = await mistralResponse.json();
-      const aiResponse = mistralData.choices[0].message.content;
-      console.log("Received response from Mistral API");
+      const geminiData = await geminiResponse.json();
+      
+      // Extract text from Gemini response
+      let aiResponse = "";
+      try {
+        aiResponse = geminiData.candidates[0].content.parts[0].text;
+        console.log("Received response from Gemini API");
+      } catch (parseError) {
+        console.error("Error parsing Gemini response:", parseError, JSON.stringify(geminiData));
+        throw new Error("Failed to parse Gemini API response");
+      }
 
       // Log the search to the search_history table with the enhanced response
       try {
@@ -115,12 +129,12 @@ ${context}`;
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
-    } catch (mistralError) {
-      console.error('Error calling Mistral API:', mistralError);
-      throw mistralError;
+    } catch (geminiError) {
+      console.error('Error calling Gemini API:', geminiError);
+      throw geminiError;
     }
   } catch (error) {
-    console.error('Error in nelson-mistral function:', error);
+    console.error('Error in nelson-gemini function:', error);
     
     return new Response(JSON.stringify({ 
       error: error.message,

@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from "../integrations/supabase/client";
 import { toast } from 'sonner';
@@ -31,13 +30,11 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [messages, setMessages] = useState<Message[]>([]);
   const [isTyping, setIsTyping] = useState(false);
 
-  // Load messages from localStorage on mount
   useEffect(() => {
     const savedMessages = localStorage.getItem('nelson-chat-messages');
     if (savedMessages) {
       try {
         const parsedMessages = JSON.parse(savedMessages);
-        // Convert string timestamps back to Date objects
         const formattedMessages = parsedMessages.map((msg: any) => ({
           ...msg,
           timestamp: new Date(msg.timestamp)
@@ -49,7 +46,6 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
-  // Save messages to localStorage whenever they change
   useEffect(() => {
     localStorage.setItem('nelson-chat-messages', JSON.stringify(messages));
   }, [messages]);
@@ -58,7 +54,6 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsTyping(true);
     
     try {
-      // First, search for relevant content using nelson-search function
       console.log("Calling nelson-search function...");
       const { data: searchData, error: searchError } = await supabase.functions.invoke('nelson-search', {
         body: { query: userQuery, limit: 5 }
@@ -73,7 +68,6 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log(`Received ${searchResults.length} search results`);
       
       if (searchResults.length === 0) {
-        // Handle no results case
         setTimeout(() => {
           const aiMessage: Message = {
             id: `ai-${Date.now()}`,
@@ -87,24 +81,22 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return;
       }
       
-      // Now, enhance the response with Mistral
       try {
-        console.log("Calling nelson-mistral function...");
-        const { data: mistralData, error: mistralError } = await supabase.functions.invoke('nelson-mistral', {
+        console.log("Calling nelson-mistral function (using Gemini)...");
+        const { data: geminiData, error: geminiError } = await supabase.functions.invoke('nelson-mistral', {
           body: { 
             query: userQuery,
             searchResults: searchResults 
           }
         });
         
-        if (mistralError) {
-          console.error('Mistral function error:', mistralError);
-          // Fall back to basic response generation if Mistral fails
-          throw new Error('Failed to enhance response with Mistral');
+        if (geminiError) {
+          console.error('Gemini function error:', geminiError);
+          throw new Error('Failed to enhance response with Gemini');
         }
         
-        const aiResponse = mistralData?.aiResponse;
-        console.log("Received AI response from Mistral");
+        const aiResponse = geminiData?.aiResponse;
+        console.log("Received AI response from Gemini");
         
         setTimeout(() => {
           const aiMessage: Message = {
@@ -117,11 +109,10 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setIsTyping(false);
         }, 1000);
         
-      } catch (mistralError) {
-        console.error('Error with Mistral enhancement:', mistralError);
+      } catch (geminiError) {
+        console.error('Error with Gemini enhancement:', geminiError);
         toast.error('AI enhancement failed, using basic response');
         
-        // Fall back to basic response format
         const responseText = formatBasicResponse(userQuery, searchResults);
         
         setTimeout(() => {
@@ -139,23 +130,19 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error) {
       console.error('Error generating AI response:', error);
       
-      // Fallback to demo responses if search fails
       toast.error('Search failed, using demo responses');
       simulateAIResponse(userQuery);
     }
   };
-  
+
   const formatBasicResponse = (query: string, results: SearchResult[]): string => {
     let responseText = `# Information from Nelson Textbook of Pediatrics\n\n`;
     
-    // Add query to response
     responseText += `## Response to: "${query}"\n\n`;
     
-    // Extract key points from results
     const combinedContent = results.map(r => r.content).join(' ');
     const sentences = combinedContent.split(/\.\s+/).filter(s => s.trim().length > 0);
     
-    // Group information into sections
     responseText += `## Key Points\n`;
     responseText += sentences.slice(0, Math.min(5, sentences.length))
       .map(s => `* ${s}${s.endsWith('.') ? '' : '.'}`)
@@ -170,9 +157,8 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     return responseText;
   }
-  
+
   const simulateAIResponse = (userMessage: string) => {
-    // Define some demo responses based on user input
     const demoResponses: Record<string, string> = {
       default: `# General Medical Information
 
@@ -321,7 +307,6 @@ The Nelson Textbook of Pediatrics classifies pediatric rashes into several categ
 **Medical Disclaimer**: This information is for educational purposes only and should not replace professional medical advice.`
     };
 
-    // Simple keyword matching for demo
     let responseText = demoResponses.default;
     const lowercaseMessage = userMessage.toLowerCase();
     
@@ -333,7 +318,6 @@ The Nelson Textbook of Pediatrics classifies pediatric rashes into several categ
       responseText = demoResponses.rash;
     }
 
-    // Simulate AI thinking time
     setTimeout(() => {
       const aiMessage: Message = {
         id: `ai-${Date.now()}`,
@@ -358,7 +342,6 @@ The Nelson Textbook of Pediatrics classifies pediatric rashes into several categ
     
     setMessages(prev => [...prev, userMessage]);
     
-    // Use the enhanced AI response generator
     generateAIResponse(content);
   };
 
@@ -368,8 +351,6 @@ The Nelson Textbook of Pediatrics classifies pediatric rashes into several categ
   };
 
   const exportChat = (format: 'pdf' | 'txt') => {
-    // In a real app, this would generate and download the chat in the requested format
-    // For now, let's just log what would happen
     console.log(`Exporting chat in ${format} format`);
     
     if (format === 'txt') {
@@ -377,7 +358,6 @@ The Nelson Textbook of Pediatrics classifies pediatric rashes into several categ
         `[${msg.sender.toUpperCase()}] ${msg.timestamp.toLocaleString()}\n${msg.content}\n\n`
       ).join('');
       
-      // Create a blob and download it
       const blob = new Blob([text], { type: 'text/plain' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -388,7 +368,6 @@ The Nelson Textbook of Pediatrics classifies pediatric rashes into several categ
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } else {
-      // In a real app, we would use a library like jsPDF to generate a PDF
       alert('PDF export would be implemented in the full version.');
     }
   };

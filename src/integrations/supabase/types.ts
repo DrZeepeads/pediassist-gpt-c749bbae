@@ -9,371 +9,114 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      chapters: {
+      ChatMessage: {
         Row: {
-          chapter: string
-          chunk_id: number
           content: string
-          id: number
-          search_vector: unknown | null
+          createdAt: string
+          id: string
+          role: string
         }
         Insert: {
-          chapter: string
-          chunk_id: number
           content: string
-          id?: number
-          search_vector?: unknown | null
+          createdAt?: string
+          id: string
+          role: string
         }
         Update: {
-          chapter?: string
-          chunk_id?: number
           content?: string
-          id?: number
-          search_vector?: unknown | null
+          createdAt?: string
+          id?: string
+          role?: string
         }
         Relationships: []
       }
-      medical_topics: {
+      DrugCalculation: {
         Row: {
-          created_at: string | null
-          description: string | null
-          parent_topic_id: string | null
-          topic_id: string
-          topic_name: string
+          createdAt: string
+          dosage: number
+          drugName: string
+          id: string
+          patientWeight: number
+          unit: string
         }
         Insert: {
-          created_at?: string | null
-          description?: string | null
-          parent_topic_id?: string | null
-          topic_id: string
-          topic_name: string
+          createdAt?: string
+          dosage: number
+          drugName: string
+          id: string
+          patientWeight: number
+          unit: string
         }
         Update: {
-          created_at?: string | null
-          description?: string | null
-          parent_topic_id?: string | null
-          topic_id?: string
-          topic_name?: string
+          createdAt?: string
+          dosage?: number
+          drugName?: string
+          id?: string
+          patientWeight?: number
+          unit?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "medical_topics_parent_topic_id_fkey"
-            columns: ["parent_topic_id"]
-            isOneToOne: false
-            referencedRelation: "medical_topics"
-            referencedColumns: ["topic_id"]
-          },
-        ]
+        Relationships: []
       }
-      nelson_chunks: {
+      GrowthRecord: {
         Row: {
-          chunk_id: string
-          content: string
-          embedding: string | null
+          age: number
+          bmi: number | null
+          createdAt: string
+          height: number | null
+          id: string
+          weight: number | null
         }
         Insert: {
-          chunk_id: string
-          content: string
-          embedding?: string | null
+          age: number
+          bmi?: number | null
+          createdAt?: string
+          height?: number | null
+          id: string
+          weight?: number | null
         }
         Update: {
-          chunk_id?: string
+          age?: number
+          bmi?: number | null
+          createdAt?: string
+          height?: number | null
+          id?: string
+          weight?: number | null
+        }
+        Relationships: []
+      }
+      NelsonChunk: {
+        Row: {
+          chapter: string | null
+          content: string
+          createdAt: string
+          embedding: Json | null
+          id: string
+          section: string | null
+        }
+        Insert: {
+          chapter?: string | null
+          content: string
+          createdAt?: string
+          embedding?: Json | null
+          id: string
+          section?: string | null
+        }
+        Update: {
+          chapter?: string | null
           content?: string
-          embedding?: string | null
+          createdAt?: string
+          embedding?: Json | null
+          id?: string
+          section?: string | null
         }
         Relationships: []
-      }
-      search_feedback: {
-        Row: {
-          created_at: string | null
-          feedback_id: string
-          feedback_text: string | null
-          rating: number | null
-          search_id: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          feedback_id?: string
-          feedback_text?: string | null
-          rating?: number | null
-          search_id?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          feedback_id?: string
-          feedback_text?: string | null
-          rating?: number | null
-          search_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "search_feedback_search_id_fkey"
-            columns: ["search_id"]
-            isOneToOne: false
-            referencedRelation: "search_history"
-            referencedColumns: ["search_id"]
-          },
-        ]
-      }
-      search_history: {
-        Row: {
-          created_at: string | null
-          query: string
-          response_chunks: string[] | null
-          search_id: string
-          user_id: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          query: string
-          response_chunks?: string[] | null
-          search_id?: string
-          user_id?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          query?: string
-          response_chunks?: string[] | null
-          search_id?: string
-          user_id?: string | null
-        }
-        Relationships: []
-      }
-      topic_chunks: {
-        Row: {
-          chapter: number
-          chunk_id: string | null
-          content: number | null
-          Content: string | null
-        }
-        Insert: {
-          chapter?: number
-          chunk_id?: string | null
-          content?: number | null
-          Content?: string | null
-        }
-        Update: {
-          chapter?: number
-          chunk_id?: string | null
-          content?: number | null
-          Content?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "topic_chunks_chunk_id_fkey"
-            columns: ["chunk_id"]
-            isOneToOne: false
-            referencedRelation: "nelson_chunks"
-            referencedColumns: ["chunk_id"]
-          },
-          {
-            foreignKeyName: "topic_chunks_Content_fkey"
-            columns: ["Content"]
-            isOneToOne: false
-            referencedRelation: "medical_topics"
-            referencedColumns: ["topic_id"]
-          },
-        ]
       }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      binary_quantize:
-        | {
-            Args: {
-              "": string
-            }
-            Returns: unknown
-          }
-        | {
-            Args: {
-              "": unknown
-            }
-            Returns: unknown
-          }
-      halfvec_avg: {
-        Args: {
-          "": number[]
-        }
-        Returns: unknown
-      }
-      halfvec_out: {
-        Args: {
-          "": unknown
-        }
-        Returns: unknown
-      }
-      halfvec_send: {
-        Args: {
-          "": unknown
-        }
-        Returns: string
-      }
-      halfvec_typmod_in: {
-        Args: {
-          "": unknown[]
-        }
-        Returns: number
-      }
-      hnsw_bit_support: {
-        Args: {
-          "": unknown
-        }
-        Returns: unknown
-      }
-      hnsw_halfvec_support: {
-        Args: {
-          "": unknown
-        }
-        Returns: unknown
-      }
-      hnsw_sparsevec_support: {
-        Args: {
-          "": unknown
-        }
-        Returns: unknown
-      }
-      hnswhandler: {
-        Args: {
-          "": unknown
-        }
-        Returns: unknown
-      }
-      ivfflat_bit_support: {
-        Args: {
-          "": unknown
-        }
-        Returns: unknown
-      }
-      ivfflat_halfvec_support: {
-        Args: {
-          "": unknown
-        }
-        Returns: unknown
-      }
-      ivfflathandler: {
-        Args: {
-          "": unknown
-        }
-        Returns: unknown
-      }
-      l2_norm:
-        | {
-            Args: {
-              "": unknown
-            }
-            Returns: number
-          }
-        | {
-            Args: {
-              "": unknown
-            }
-            Returns: number
-          }
-      l2_normalize:
-        | {
-            Args: {
-              "": string
-            }
-            Returns: string
-          }
-        | {
-            Args: {
-              "": unknown
-            }
-            Returns: unknown
-          }
-        | {
-            Args: {
-              "": unknown
-            }
-            Returns: unknown
-          }
-      search_nelson_chunks: {
-        Args: {
-          query_text: string
-          match_count?: number
-        }
-        Returns: {
-          chunk_id: string
-          content: string
-          similarity: number
-        }[]
-      }
-      sparsevec_out: {
-        Args: {
-          "": unknown
-        }
-        Returns: unknown
-      }
-      sparsevec_send: {
-        Args: {
-          "": unknown
-        }
-        Returns: string
-      }
-      sparsevec_typmod_in: {
-        Args: {
-          "": unknown[]
-        }
-        Returns: number
-      }
-      text_search_nelson_chunks: {
-        Args: {
-          query_text: string
-          match_count?: number
-        }
-        Returns: {
-          chunk_id: string
-          content: string
-          rank: number
-        }[]
-      }
-      vector_avg: {
-        Args: {
-          "": number[]
-        }
-        Returns: string
-      }
-      vector_dims:
-        | {
-            Args: {
-              "": string
-            }
-            Returns: number
-          }
-        | {
-            Args: {
-              "": unknown
-            }
-            Returns: number
-          }
-      vector_norm: {
-        Args: {
-          "": string
-        }
-        Returns: number
-      }
-      vector_out: {
-        Args: {
-          "": string
-        }
-        Returns: unknown
-      }
-      vector_send: {
-        Args: {
-          "": string
-        }
-        Returns: string
-      }
-      vector_typmod_in: {
-        Args: {
-          "": unknown[]
-        }
-        Returns: number
-      }
+      [_ in never]: never
     }
     Enums: {
       [_ in never]: never

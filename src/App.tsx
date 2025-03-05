@@ -12,6 +12,7 @@ import Index from "./pages/Index";
 import Chat from "./pages/Chat";
 import Calculator from "./pages/Calculator";
 import Charts from "./pages/Charts";
+import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import { toast } from "./components/ui/use-toast";
 
@@ -70,6 +71,7 @@ const App = () => {
                     <Route path="/chat" element={<Chat />} />
                     <Route path="/calculator" element={<Calculator />} />
                     <Route path="/charts" element={<Charts />} />
+                    <Route path="/settings" element={<Settings />} />
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </main>
