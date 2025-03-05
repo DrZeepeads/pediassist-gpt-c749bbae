@@ -28,7 +28,55 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // First try text search as it's more reliable when embedding may not be set up
+    // First try vector search as it's more reliable for semantic understanding
+    try {
+      console.log(`Using vector search with query: "${query}"`);
+      
+      const { data: vectorResults, error: vectorError } = await supabaseClient.rpc(
+        'search_nelson_chunks', 
+        { 
+          query_text: query,
+          match_count: limit 
+        }
+      );
+
+      if (vectorError) {
+        console.error('Vector search error:', vectorError);
+        throw vectorError;
+      }
+
+      if (vectorResults && vectorResults.length > 0) {
+        console.log(`Found ${vectorResults.length} results via vector search`);
+        
+        // Log the search to the search_history table
+        try {
+          await supabaseClient
+            .from('search_history')
+            .insert({
+              query: query,
+              response_chunks: vectorResults.map(result => result.chunk_id)
+            });
+          console.log('Search history recorded successfully');
+        } catch (historyError) {
+          console.error('Failed to record search history:', historyError);
+          // Continue even if history recording fails
+        }
+
+        return new Response(JSON.stringify({ 
+          results: vectorResults, 
+          method: 'vector_search' 
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+      
+      console.log('No results from vector search, trying text search');
+    } catch (vectorSearchError) {
+      console.error('Vector search failed:', vectorSearchError);
+      console.log('Falling back to text search');
+    }
+
+    // Fall back to text search
     try {
       const processedQuery = query
         .trim()
@@ -77,53 +125,9 @@ serve(async (req) => {
         });
       }
       
-      console.log('No results from text search, trying vector search');
+      console.log('No results from text search either');
     } catch (textSearchError) {
       console.error('Text search failed:', textSearchError);
-      console.log('Falling back to vector search');
-    }
-
-    // Try vector search
-    try {
-      const { data: vectorResults, error: vectorError } = await supabaseClient.rpc(
-        'search_nelson_chunks', 
-        { 
-          query_text: query,
-          match_count: limit 
-        }
-      );
-
-      if (vectorError) {
-        console.error('Vector search error:', vectorError);
-        throw vectorError;
-      }
-
-      if (vectorResults && vectorResults.length > 0) {
-        console.log(`Found ${vectorResults.length} results via vector search`);
-        
-        // Log the search to the search_history table
-        try {
-          await supabaseClient
-            .from('search_history')
-            .insert({
-              query: query,
-              response_chunks: vectorResults.map(result => result.chunk_id)
-            });
-          console.log('Search history recorded successfully');
-        } catch (historyError) {
-          console.error('Failed to record search history:', historyError);
-          // Continue even if history recording fails
-        }
-
-        return new Response(JSON.stringify({ 
-          results: vectorResults, 
-          method: 'vector_search' 
-        }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
-      }
-    } catch (vectorSearchError) {
-      console.error('Vector search failed:', vectorSearchError);
     }
 
     // If we get here, both search methods failed to find results

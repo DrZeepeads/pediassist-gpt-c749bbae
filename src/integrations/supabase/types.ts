@@ -9,6 +9,30 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      chapters: {
+        Row: {
+          chapter: string
+          chunk_id: number
+          content: string
+          id: number
+          search_vector: unknown | null
+        }
+        Insert: {
+          chapter: string
+          chunk_id: number
+          content: string
+          id?: number
+          search_vector?: unknown | null
+        }
+        Update: {
+          chapter?: string
+          chunk_id?: number
+          content?: string
+          id?: number
+          search_vector?: unknown | null
+        }
+        Relationships: []
+      }
       ChatMessage: {
         Row: {
           content: string
@@ -84,29 +108,62 @@ export type Database = {
         }
         Relationships: []
       }
+      nelson_drugs_doses: {
+        Row: {
+          created_at: string | null
+          dosage: string
+          frequency: string | null
+          id: number
+          max_dose: string | null
+          name: string
+          notes: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          dosage: string
+          frequency?: string | null
+          id?: number
+          max_dose?: string | null
+          name: string
+          notes?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          dosage?: string
+          frequency?: string | null
+          id?: number
+          max_dose?: string | null
+          name?: string
+          notes?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       NelsonChunk: {
         Row: {
           chapter: string | null
+          "chunk id": number
           content: string
           createdAt: string
           embedding: Json | null
-          id: string
           section: string | null
         }
         Insert: {
           chapter?: string | null
+          "chunk id": number
           content: string
           createdAt?: string
           embedding?: Json | null
-          id: string
           section?: string | null
         }
         Update: {
           chapter?: string | null
+          "chunk id"?: number
           content?: string
           createdAt?: string
           embedding?: Json | null
-          id?: string
           section?: string | null
         }
         Relationships: []
