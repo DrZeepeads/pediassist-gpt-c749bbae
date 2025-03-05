@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -7,7 +7,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
-import { RefreshCw, Moon, Sun, Trash } from 'lucide-react';
+import { RefreshCw, Moon, Sun, Trash, Download, Globe, ToggleLeft, BellRing, Volume2, VolumeX, Languages } from 'lucide-react';
 
 const Settings = () => {
   const { toast } = useToast();
@@ -15,6 +15,28 @@ const Settings = () => {
   const [fontSize, setFontSize] = useState(localStorage.getItem('nelson-font-size') || 'medium');
   const [notifications, setNotifications] = useState(localStorage.getItem('nelson-notifications') === 'true');
   const [clearingHistory, setClearingHistory] = useState(false);
+  const [language, setLanguage] = useState(localStorage.getItem('nelson-language') || 'english');
+  const [highContrast, setHighContrast] = useState(localStorage.getItem('nelson-high-contrast') === 'true');
+  const [autoReadMode, setAutoReadMode] = useState(localStorage.getItem('nelson-auto-read') === 'true');
+  const [soundEffects, setSoundEffects] = useState(localStorage.getItem('nelson-sound-effects') === 'true');
+  const [exportingData, setExportingData] = useState(false);
+
+  // Apply settings on initial load
+  useEffect(() => {
+    // Apply theme
+    document.documentElement.classList.toggle('dark', theme === 'dark');
+    
+    // Apply font size
+    const sizeMap = {
+      small: '14px',
+      medium: '16px',
+      large: '18px',
+    };
+    document.documentElement.style.fontSize = sizeMap[fontSize as keyof typeof sizeMap];
+    
+    // Apply high contrast if enabled
+    document.documentElement.classList.toggle('high-contrast', highContrast);
+  }, [theme, fontSize, highContrast]);
 
   // Theme handling
   const handleThemeChange = (newTheme: string) => {
@@ -56,6 +78,47 @@ const Settings = () => {
     });
   };
 
+  // Language handling
+  const handleLanguageChange = (newLanguage: string) => {
+    setLanguage(newLanguage);
+    localStorage.setItem('nelson-language', newLanguage);
+    toast({
+      title: "Language updated",
+      description: `Language set to ${newLanguage}`,
+    });
+  };
+
+  // High contrast mode
+  const handleHighContrastChange = (enabled: boolean) => {
+    setHighContrast(enabled);
+    localStorage.setItem('nelson-high-contrast', enabled.toString());
+    document.documentElement.classList.toggle('high-contrast', enabled);
+    toast({
+      title: enabled ? "High contrast enabled" : "High contrast disabled",
+      description: enabled ? "High contrast mode is now active" : "High contrast mode is now inactive",
+    });
+  };
+
+  // Auto-read mode
+  const handleAutoReadChange = (enabled: boolean) => {
+    setAutoReadMode(enabled);
+    localStorage.setItem('nelson-auto-read', enabled.toString());
+    toast({
+      title: enabled ? "Auto-read enabled" : "Auto-read disabled",
+      description: enabled ? "Responses will be read aloud automatically" : "Auto-read mode is now disabled",
+    });
+  };
+
+  // Sound effects
+  const handleSoundEffectsChange = (enabled: boolean) => {
+    setSoundEffects(enabled);
+    localStorage.setItem('nelson-sound-effects', enabled.toString());
+    toast({
+      title: enabled ? "Sound effects enabled" : "Sound effects disabled",
+      description: enabled ? "You will now hear sound effects" : "Sound effects are now disabled",
+    });
+  };
+
   // Clear history function
   const clearHistory = () => {
     setClearingHistory(true);
@@ -72,14 +135,53 @@ const Settings = () => {
     }, 1000);
   };
 
+  // Export data function
+  const exportData = () => {
+    setExportingData(true);
+    
+    // Collect all user data from localStorage
+    const userData = {
+      settings: {
+        theme,
+        fontSize,
+        notifications,
+        language,
+        highContrast,
+        autoReadMode,
+        soundEffects
+      },
+      chatMessages: JSON.parse(localStorage.getItem('nelson-chat-messages') || '[]'),
+      searchHistory: JSON.parse(localStorage.getItem('nelson-search-history') || '[]')
+    };
+    
+    // Convert to JSON and create download link
+    const dataStr = JSON.stringify(userData, null, 2);
+    const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+    
+    const exportFileDefaultName = 'nelson-gpt-data.json';
+    const linkElement = document.createElement('a');
+    linkElement.setAttribute('href', dataUri);
+    linkElement.setAttribute('download', exportFileDefaultName);
+    linkElement.click();
+    
+    setTimeout(() => {
+      setExportingData(false);
+      toast({
+        title: "Data exported",
+        description: "Your data has been exported successfully",
+      });
+    }, 1000);
+  };
+
   return (
     <div className="container max-w-4xl py-6 space-y-8">
       <h1 className="text-2xl font-bold">Settings</h1>
       <p className="text-muted-foreground">Customize your Nelson-GPT experience</p>
       
       <Tabs defaultValue="appearance">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="appearance">Appearance</TabsTrigger>
+          <TabsTrigger value="accessibility">Accessibility</TabsTrigger>
           <TabsTrigger value="privacy">Privacy</TabsTrigger>
           <TabsTrigger value="about">About</TabsTrigger>
         </TabsList>
@@ -131,6 +233,86 @@ const Settings = () => {
               </div>
             </CardContent>
           </Card>
+          
+          <Card>
+            <CardHeader>
+              <CardTitle>Language</CardTitle>
+              <CardDescription>Choose your preferred language</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center space-x-2 mb-2">
+                <Globe className="h-5 w-5" />
+                <Label htmlFor="language-select">Interface Language</Label>
+              </div>
+              <Select value={language} onValueChange={handleLanguageChange}>
+                <SelectTrigger id="language-select">
+                  <SelectValue placeholder="Select language" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="english">English</SelectItem>
+                  <SelectItem value="spanish">Spanish</SelectItem>
+                  <SelectItem value="french">French</SelectItem>
+                  <SelectItem value="german">German</SelectItem>
+                  <SelectItem value="chinese">Chinese</SelectItem>
+                </SelectContent>
+              </Select>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        {/* Accessibility Tab */}
+        <TabsContent value="accessibility" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Visual Settings</CardTitle>
+              <CardDescription>Customize visual accessibility options</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label htmlFor="high-contrast">High Contrast Mode</Label>
+                  <p className="text-sm text-muted-foreground">Increase contrast for better readability</p>
+                </div>
+                <Switch 
+                  id="high-contrast"
+                  checked={highContrast}
+                  onCheckedChange={handleHighContrastChange}
+                />
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader>
+              <CardTitle>Audio Settings</CardTitle>
+              <CardDescription>Customize audio accessibility options</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label htmlFor="auto-read">Auto-Read Responses</Label>
+                  <p className="text-sm text-muted-foreground">Have responses read aloud automatically</p>
+                </div>
+                <Switch 
+                  id="auto-read"
+                  checked={autoReadMode}
+                  onCheckedChange={handleAutoReadChange}
+                />
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label htmlFor="sound-effects">Sound Effects</Label>
+                  <p className="text-sm text-muted-foreground">Enable or disable interface sound effects</p>
+                </div>
+                <Switch 
+                  id="sound-effects"
+                  checked={soundEffects}
+                  onCheckedChange={handleSoundEffectsChange}
+                />
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
         
         {/* Privacy Tab */}
@@ -151,6 +333,29 @@ const Settings = () => {
                   checked={notifications}
                   onCheckedChange={handleNotificationsChange}
                 />
+              </div>
+              
+              <div className="border-t pt-4 mt-4">
+                <Label>Export Your Data</Label>
+                <p className="text-sm text-muted-foreground mb-2">Download a copy of your personal data</p>
+                <Button 
+                  variant="outline" 
+                  onClick={exportData}
+                  disabled={exportingData}
+                  className="flex items-center gap-2"
+                >
+                  {exportingData ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                      Exporting...
+                    </>
+                  ) : (
+                    <>
+                      <Download className="h-4 w-4" />
+                      Export Data
+                    </>
+                  )}
+                </Button>
               </div>
               
               <div className="border-t pt-4 mt-4">
@@ -212,6 +417,20 @@ const Settings = () => {
                 <p className="text-sm text-muted-foreground">
                   This application is for educational purposes only. It is not a substitute for professional medical advice, diagnosis, or treatment.
                   Always seek the advice of your physician or other qualified health provider with any questions you may have.
+                </p>
+              </div>
+              
+              <div>
+                <h3 className="font-medium">Contact</h3>
+                <p className="text-sm text-muted-foreground">
+                  For support or feedback, please contact us at support@nelson-gpt.com
+                </p>
+              </div>
+              
+              <div>
+                <h3 className="font-medium">Acknowledgements</h3>
+                <p className="text-sm text-muted-foreground">
+                  We would like to thank the authors and publishers of the Nelson Textbook of Pediatrics for their invaluable contribution to pediatric medicine.
                 </p>
               </div>
             </CardContent>
