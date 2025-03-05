@@ -108,6 +108,27 @@ export type Database = {
         }
         Relationships: []
       }
+      nelson_chunks: {
+        Row: {
+          content: string
+          created_at: string | null
+          id: number
+          search_vector: unknown | null
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          id?: number
+          search_vector?: unknown | null
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          id?: number
+          search_vector?: unknown | null
+        }
+        Relationships: []
+      }
       nelson_drugs_doses: {
         Row: {
           created_at: string | null
