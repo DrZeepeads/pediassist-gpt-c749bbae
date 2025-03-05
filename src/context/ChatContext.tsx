@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from "../integrations/supabase/client";
 import { toast } from 'sonner';
@@ -82,8 +83,8 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       
       try {
-        console.log("Calling nelson-mistral function (using Gemini)...");
-        const { data: geminiData, error: geminiError } = await supabase.functions.invoke('nelson-mistral', {
+        console.log("Calling nelson-gemini function...");
+        const { data: geminiData, error: geminiError } = await supabase.functions.invoke('nelson-gemini', {
           body: { 
             query: userQuery,
             searchResults: searchResults 
